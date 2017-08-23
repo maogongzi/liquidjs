@@ -1,22 +1,30 @@
 {% extends 'partials/proxy' %}
 
-<ul>
-  {% for todo in todolist %}
-    <li>{{todo}}</li>
-  {% endfor %}
-</ul>
 
 {% block abc %}
-	before super---
-	{{ block.super }}
-	---end super
+	<div style="border: 1px solid;color: red;padding: 10px">
+		<div style="border: 1px solid;color: pink;padding: 10px;margin-left: 10px">
+			before 'abc' block in 'partials/proxy'
+			{{ block.super }}
+			end 'abc' block in 'partials/proxy'
+		</div>
 
-
-	<p style="border: 1px solid;color: red;padding: 10px">
-	child block
-	</p>
+		'abc' block in 'partials/todolist'
+	</div>
 {% endblock %}
 
 {% block footer %}
+	<ul>
+	  {% for todo in todos %}
+	    <li>{{todo}}</li>
+	  {% endfor %}
+	</ul>
+
   many thanks to -> Copyright @ 2016, Harttle
 {% endblock %}
+
+
+{% block xyz %}
+	<p>My mission is to take over the place of 'xyz' in 'partials/proxy'.</p>
+{% endblock %}
+

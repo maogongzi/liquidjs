@@ -8,8 +8,11 @@
   <h1>{{title}}</h1>
 
   {% block abc %}
-  	{{test_var}}
-  	<p style="border: 1px solid;padding: 10px">parent block</p>
+  	<div style="border: 1px solid;padding: 10px">
+  		{{test_var}}<br/>
+
+  		this is 'abc' block in <strong>root</strong> layout
+  	</div>
   {% endblock %}
 
   <footer> {% block footer %}{% endblock %} </footer>

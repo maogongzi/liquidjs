@@ -1,17 +1,23 @@
 {% extends 'partials/layout' %}
 
 {% block abc %}
-	<p style="border: 1px solid;color: green;padding: 10px">
-	proxy block
+	<div style="border: 1px solid;color: green;padding: 10px">
+		<p>'abc' block in 'partials/proxy'</p>
 
-		---proxy before super
-		{{ block.super }}
-		---proxy after super
+		<div style="border: 1px solid;color: purple;padding: 10px">
+			<p>before 'abc' block in 'partials/layout'</p>
+				{{ block.super }}
+			<p>end 'abc' block in 'partials/layout'</p>
+		</div>
 
-		---BEGIN nested block in proxy
-			{% block def %}
-				def(nested block in proxy)
+		<p>before 'xyz' block in 'abc' block in 'partials/proxy'</p>
+			{% block xyz %}
+				<p>this is xyz block, a nested block of block 'abc' of 'partials/proxy', <strong style="color: red">it's a bug</strong> if you see this, which means the child 'xyz' block from 'partials/todolist' failed to override this block.</p>
 			{% endblock %}
-		---END nested block in proxy
-	</p>
+		<p>end 'xyz' block in 'abc' block in 'partials/proxy'</p>
+	</div>
+{% endblock %}
+
+{% block footer %}
+	this is a footer from 'partials/proxy', <strong style="color: red">it's a bug</strong> if you see this, unless you deliberately remove the 'footer' block defined in 'partials/todolist'
 {% endblock %}
