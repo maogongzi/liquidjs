@@ -1,3 +1,4 @@
+const fs = require('fs')
 const Scope = require('./src/scope')
 const _ = require('./src/util/underscore.js')
 const assert = require('./src/util/assert.js')
@@ -34,8 +35,52 @@ var _engine = {
     return this
   },
   parse: function (html, filepath) {
-    var tokens = tokenizer.parse(html, filepath, this.options)
-    return this.parser.parse(tokens)
+    let layoutName = null;
+    let currentTokens = tokenizer.parse(html, filepath, this.options);
+    let layoutTokens = [currentTokens];
+
+    // has a layout?
+    if (
+        currentTokens[0].type === 'tag' &&
+        currentTokens[0].name === 'extends'
+    ) {
+      let extendsTag = this.parser.parse([currentTokens[0]]);
+
+      layoutName = extendsTag[0].tagImpl.layoutName;
+      // remove extends tag from token list
+      currentTokens.shift();
+    }
+
+    while (layoutName) {
+        let superTokens = this.parseTokensSync(layoutName);
+
+        // TODO: check whether the 'extends' tag is the first tag,
+        // throw an error if it's not.
+        if (
+            superTokens[0].type === 'tag' &&
+            superTokens[0].name === 'extends'
+        ) {
+            let extendsTag = this.parser.parse([superTokens[0]]);
+
+            layoutName = extendsTag[0].tagImpl.layoutName;
+            // remove 'extends' tag
+            superTokens.shift();
+            layoutTokens.push(superTokens);
+        } else {
+            // no more super layouts!
+            layoutName = null;
+            layoutTokens.push(superTokens);
+        }
+    }
+
+    // parse the tokens right away so that we have all blocks built.
+    layoutTokens = layoutTokens.map((tkns) => {
+      return this.parser.parse(tkns);
+    });
+
+    // return the combined parsed template chunks
+    console.log(layoutTokens[0])
+    return layoutTokens[0];
   },
   render: function (tpl, ctx, opts) {
     opts = _.assign({}, this.options, opts)
@@ -43,7 +88,6 @@ var _engine = {
     return this.renderer.renderTemplates(tpl, scope)
   },
   parseAndRender: function (html, ctx, opts) {
-    console.log('parse and render')
     return Promise.resolve()
       .then(() => this.parse(html))
       .then(tpl => this.render(tpl, ctx, opts))
@@ -75,6 +119,70 @@ var _engine = {
         throw e
       })
   },
+
+  // read templates from file system synchronizely.
+  getTemplateSync: function (filepath, root) {    
+    // we've found the template file, prepare to parse it.
+    // cache enabled?
+    if (this.options.cache && this.cache[filepath]) {
+      return this.cache[filepath];
+    }
+
+    let tokens = this.parseTokensSync(filepath, root);
+    let tpls = this.parser.parse(tokens);
+    
+    // need to be cached?
+    if (this.options.cache) {
+      this.cache[filepath] = tpls;
+    }
+
+    return tpls;
+  },
+
+  // tokenize template file synchonizely.
+  parseTokensSync(filepath, root) {
+    let html = this.getTemplateHTMLSync(filepath, root);
+
+    return tokenizer.parse(html, filepath, this.options);
+  },
+
+  getTemplateHTMLSync(filepath, root) {
+    if (!path.extname(filepath)) {
+      filepath += this.options.extname
+    }
+
+    root = this.options.root.concat(root || []);
+    root = _.uniq(root);
+
+    let possiblePaths = root.map(root => path.resolve(root, filepath));
+    // first mark it as null, if later we find one available path,
+    // we'll use it then.
+    let resolvedPath = null;
+
+    // check all possible template paths
+    for (let i=0; i< possiblePaths.length; i++) {
+      try {
+        fs.accessSync(possiblePaths[i]);
+        resolvedPath = possiblePaths[i];
+
+        // we've found one available path, return and use it immediately
+        break;
+      } catch (e) {
+        // NO-OP (nothing to do here, continue to check the next path)
+      }
+    }
+
+    // template not found, throw an error
+    if (!resolvedPath) {
+      throw {
+        code: 'ENOENT',
+        message: `template ${resolvedPath} not found`
+      }
+    }
+
+    return fs.readFileSync(resolvedPath, 'utf8');
+  },
+
   getTemplate: function (filepath, root) {
     if (!path.extname(filepath)) {
       filepath += this.options.extname
@@ -98,11 +206,11 @@ var _engine = {
   express: function (opts) {
     opts = opts || {}
     var self = this
-    return function (filePath, ctx, callback) {
+    return function (filepath, ctx, callback) {
       assert(Array.isArray(this.root) || _.isString(this.root),
         'illegal views root, are you using express.js?')
       opts.root = this.root
-      self.renderFile(filePath, ctx, opts)
+      self.renderFile(filepath, ctx, opts)
         .then(html => callback(null, html))
         .catch(e => callback(e))
     }

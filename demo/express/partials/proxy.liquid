@@ -1,0 +1,17 @@
+{% extends 'partials/layout' %}
+
+{% block abc %}
+	<p style="border: 1px solid;color: green;padding: 10px">
+	proxy block
+
+		---proxy before super
+		{{ block.super }}
+		---proxy after super
+
+		---BEGIN nested block in proxy
+			{% block def %}
+				def(nested block in proxy)
+			{% endblock %}
+		---END nested block in proxy
+	</p>
+{% endblock %}

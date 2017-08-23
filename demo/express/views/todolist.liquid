@@ -1,11 +1,22 @@
-{% extends 'layout' %}
+{% extends 'partials/proxy' %}
 
 <ul>
   {% for todo in todolist %}
-    <li>{% include 'todo' id=forloop.index %}</li>
+    <li>{{todo}}</li>
   {% endfor %}
 </ul>
 
-{% block 'footer' %}
-  Copyright @ 2016, Harttle
+{% block abc %}
+	before super---
+	{{ block.super }}
+	---end super
+
+
+	<p style="border: 1px solid;color: red;padding: 10px">
+	child block
+	</p>
+{% endblock %}
+
+{% block footer %}
+  many thanks to -> Copyright @ 2016, Harttle
 {% endblock %}
