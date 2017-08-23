@@ -40,10 +40,19 @@ var _engine = {
     let layoutTokens = [currentTokens];
 
     // has a layout?
-    if (
-        currentTokens[0].type === 'tag' &&
-        currentTokens[0].name === 'extends'
-    ) {
+    let extendsTagIdx = currentTokens.findIndex((tkn) => {
+      return tkn.type === 'tag' && tkn.name === 'extends';
+    });
+
+    if (extendsTagIdx > 0) {
+      throw {
+        message: `extends tag must be in the very first place of
+        the template, any white space or line-break is not allowed!`
+      }
+    }
+
+    // found extends tag as the exactly first token
+    if (extendsTagIdx === 0) {
       let extendsTag = this.parser.parse([currentTokens[0]]);
 
       layoutName = extendsTag[0].tagImpl.layoutName;
@@ -51,26 +60,33 @@ var _engine = {
       currentTokens.shift();
     }
 
+    // resolve all parent layouts synchronizely
     while (layoutName) {
-        let superTokens = this.parseTokensSync(layoutName);
+      let superTokens = this.parseTokensSync(layoutName);
+      let extendsTagIdx = superTokens.findIndex((tkn) => {
+        return tkn.type === 'tag' && tkn.name === 'extends';
+      });
 
-        // TODO: check whether the 'extends' tag is the first tag,
-        // throw an error if it's not.
-        if (
-            superTokens[0].type === 'tag' &&
-            superTokens[0].name === 'extends'
-        ) {
-            let extendsTag = this.parser.parse([superTokens[0]]);
-
-            layoutName = extendsTag[0].tagImpl.layoutName;
-            // remove 'extends' tag
-            superTokens.shift();
-            layoutTokens.push(superTokens);
-        } else {
-            // no more super layouts!
-            layoutName = null;
-            layoutTokens.push(superTokens);
+      if (extendsTagIdx > 0) {
+        throw {
+          message: `extends tag must be in the very first place of
+          the template, any white space or line-break is not allowed!`
         }
+      }
+
+      // found extends tag as the exactly first token
+      if (extendsTagIdx === 0) {
+        let extendsTag = this.parser.parse([superTokens[0]]);
+
+        layoutName = extendsTag[0].tagImpl.layoutName;
+        // remove 'extends' tag since we have already got the layout name.
+        superTokens.shift();
+        layoutTokens.push(superTokens);
+      } else {
+        // no more super layouts!
+        layoutName = null;
+        layoutTokens.push(superTokens);
+      }
     }
 
     // parse the tokens right away so that we have all blocks built.
@@ -82,68 +98,57 @@ var _engine = {
     if (parsedLayouts.length === 1) {
       return parsedLayouts[0];
     }
-    // merge block in a left-to-right order and handle 'block.super' references
+    // merge blocks in a left-to-right order and handle 'block.super'
+    // references
     else {
+      // let's define a map to track all blocks from child layouts
+      // to root layout
       let blocksMap = {};
 
-// try {
-
       for (let i=0; i < parsedLayouts.length; i++) {
-        parsedLayouts[i] = parsedLayouts[i].map((leftTpl) => {
-          // is a block? (otherwise will be simply ignored)
-          if (leftTpl.type === 'tag' && leftTpl.name === 'block') {
-            leftTpl = this.replaceNestedBlocks(leftTpl, blocksMap);
-          }
-
-          return leftTpl;
-        });
+        parsedLayouts[i] = this.replaceNestedBlocks(parsedLayouts[i], blocksMap);
       }
 
-// } catch(e) {
-//   console.log(e)
-// }
-
-      // return the combined parsed template chunks
-      // console.log(parsedLayouts[0])
+      // return the combined parsed template chunks(the last one
+       // is the root layout)
       return parsedLayouts[parsedLayouts.length - 1];
     }
   },
 
-  replaceNestedBlocks(leftTpl, blocksMap) {
-    // block not registered
-    if (!blocksMap[leftTpl.tagImpl.block]) {
-      blocksMap[leftTpl.tagImpl.block] = leftTpl;
-    }
-    // TODO: detect same name blocks in same template.
-    // block from parent layout
-    else {
-      let childBlock = blocksMap[leftTpl.tagImpl.block];
+  replaceNestedBlocks(superTpls, blocksMap) {
+    return superTpls.map((leftTpl) => {
+      // is a block? (otherwise ignore processing it)
+      if (leftTpl.type === 'tag' && leftTpl.name === 'block') {
+        // block not registered
+        if (!blocksMap[leftTpl.tagImpl.block]) {
+          blocksMap[leftTpl.tagImpl.block] = leftTpl;
+        }
+        // TODO: detect same name blocks in same template.
+        // block from parent layout
+        else {
+          let childBlock = blocksMap[leftTpl.tagImpl.block];
 
-      // has a block.super reference?
-      let superRefIdx = childBlock.tagImpl.tpls.findIndex((ctpl) => {
-        return ctpl.type === 'output' && ctpl.initial === 'block.super';
-      });
+          // has a block.super reference?
+          let superRefIdx = childBlock.tagImpl.tpls.findIndex((ctpl) => {
+            return ctpl.type === 'output' && ctpl.initial === 'block.super';
+          });
 
-      // replace and override parent block
-      if (superRefIdx > -1) {
-        // first merge parent tpls into child tpls;
-        childBlock.tagImpl.tpls.splice(
-          superRefIdx, 1, ...leftTpl.tagImpl.tpls);
+          // merge parent tpls into child tpls;
+          if (superRefIdx > -1) {
+            childBlock.tagImpl.tpls.splice(
+              superRefIdx, 1, ...leftTpl.tagImpl.tpls);
+          }
+          // override parent block tpls with child tpls
+          leftTpl.tagImpl.tpls = childBlock.tagImpl.tpls;
+        }
+
+        // handle nested blocks, and the blocks map will be shared across.
+        leftTpl.tagImpl.tpls =
+          this.replaceNestedBlocks(leftTpl.tagImpl.tpls, blocksMap);
       }
-      // then replace parent tpls by merged tpls;
-      leftTpl.tagImpl.tpls = childBlock.tagImpl.tpls;
-    }
 
-    leftTpl.tagImpl.tpls = leftTpl.tagImpl.tpls.map((cLeftTpl) => {
-      // is a block? (otherwise will be simply ignored)
-      if (cLeftTpl.type === 'tag' && cLeftTpl.name === 'block') {
-        cLeftTpl = this.replaceNestedBlocks(cLeftTpl, blocksMap);
-      }
-
-      return cLeftTpl;
+      return leftTpl;
     });
-
-    return leftTpl;
   },
 
   render: function (tpl, ctx, opts) {
