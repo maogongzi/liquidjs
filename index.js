@@ -74,14 +74,78 @@ var _engine = {
     }
 
     // parse the tokens right away so that we have all blocks built.
-    layoutTokens = layoutTokens.map((tkns) => {
+    let parsedLayouts = layoutTokens.map((tkns) => {
       return this.parser.parse(tkns);
     });
 
-    // return the combined parsed template chunks
-    console.log(layoutTokens[0])
-    return layoutTokens[0];
+    // there aren't any layouts, return current parsed tokens immediately
+    if (parsedLayouts.length === 1) {
+      return parsedLayouts[0];
+    }
+    // merge block in a left-to-right order and handle 'block.super' references
+    else {
+      let blocksMap = {};
+
+// try {
+
+      for (let i=0; i < parsedLayouts.length; i++) {
+        parsedLayouts[i] = parsedLayouts[i].map((leftTpl) => {
+          // is a block? (otherwise will be simply ignored)
+          if (leftTpl.type === 'tag' && leftTpl.name === 'block') {
+            leftTpl = this.replaceNestedBlocks(leftTpl, blocksMap);
+          }
+
+          return leftTpl;
+        });
+      }
+
+// } catch(e) {
+//   console.log(e)
+// }
+
+      // return the combined parsed template chunks
+      // console.log(parsedLayouts[0])
+      return parsedLayouts[parsedLayouts.length - 1];
+    }
   },
+
+  replaceNestedBlocks(leftTpl, blocksMap) {
+    // block not registered
+    if (!blocksMap[leftTpl.tagImpl.block]) {
+      blocksMap[leftTpl.tagImpl.block] = leftTpl;
+    }
+    // TODO: detect same name blocks in same template.
+    // block from parent layout
+    else {
+      let childBlock = blocksMap[leftTpl.tagImpl.block];
+
+      // has a block.super reference?
+      let superRefIdx = childBlock.tagImpl.tpls.findIndex((ctpl) => {
+        return ctpl.type === 'output' && ctpl.initial === 'block.super';
+      });
+
+      // replace and override parent block
+      if (superRefIdx > -1) {
+        // first merge parent tpls into child tpls;
+        childBlock.tagImpl.tpls.splice(
+          superRefIdx, 1, ...leftTpl.tagImpl.tpls);
+      }
+      // then replace parent tpls by merged tpls;
+      leftTpl.tagImpl.tpls = childBlock.tagImpl.tpls;
+    }
+
+    leftTpl.tagImpl.tpls = leftTpl.tagImpl.tpls.map((cLeftTpl) => {
+      // is a block? (otherwise will be simply ignored)
+      if (cLeftTpl.type === 'tag' && cLeftTpl.name === 'block') {
+        cLeftTpl = this.replaceNestedBlocks(cLeftTpl, blocksMap);
+      }
+
+      return cLeftTpl;
+    });
+
+    return leftTpl;
+  },
+
   render: function (tpl, ctx, opts) {
     opts = _.assign({}, this.options, opts)
     var scope = Scope.factory(ctx, opts)

@@ -2,17 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>{{title}}</title>
+  <title>{% block title %}{{title}}{% endblock %}</title>
 </head>
 <body>
   <h1>{{title}}</h1>
 
   {% block abc %}
-  	<div style="border: 1px solid;padding: 10px">
-  		{{test_var}}<br/>
+    <div style="border: 1px solid;padding: 10px">
+      {{test_var}}<br/>
 
-  		this is 'abc' block in <strong>root</strong> layout
-  	</div>
+      this is 'abc' block in <strong>root</strong> layout
+    </div>
   {% endblock %}
 
   <footer> {% block footer %}{% endblock %} </footer>
