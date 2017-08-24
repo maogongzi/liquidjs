@@ -8,11 +8,21 @@ var engine = Liquid({
 })
 
 app.engine('liquid', engine.express()) // register liquid engine
-app.set('views', ['./partials', './views'])            // specify the views directory
+app.set('views', ['./views'])            // specify the views directory
 app.set('view engine', 'liquid')       // set to default
 
 app.get('/', function (req, res) {
-  var todos = ['fork and clone', 'make it better', 'make a pull request']
+  var todos = [{
+    id: 1,
+    text: 'fork and clone'
+  }, {
+    id: 2,
+    text: 'make it better'
+  }, {
+    id: 3,
+    text: 'make a pull request'
+  }];
+
   res.render('todolist', {
     todos: todos,
     title: 'Welcome to liquidjs!',

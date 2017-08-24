@@ -1,31 +1,39 @@
-{% extends 'partials/proxy' %}
+{% extends 'views/proxy' %}
 
 {% block title %}todolist{% endblock %}
 
 {% block abc %}
   <div style="border: 1px solid;color: red;padding: 10px">
-    <div style="border: 1px solid;color: pink;padding: 10px;margin-left: 10px">
-      before 'abc' block in 'partials/proxy'
-      {{ block.super }}
-      end 'abc' block in 'partials/proxy'
-    </div>
+    'abc' block in 'todolist'
 
-    'abc' block in 'partials/todolist'
+    <ul>
+      {% for todo in todos %}
+        <li>
+        {% include 'partials/todo' %}
+        </li>
+      {% endfor %}
+    </ul>
+
+    <div style="border: 1px solid;color: pink;padding: 10px;margin-left: 10px">
+      before 'abc' block in 'views/proxy'
+      {{ block.super }}
+      end 'abc' block in 'views/proxy'
+    </div>
   </div>
 {% endblock %}
 
 {% block footer %}
-  <ul>
-    {% for todo in todos %}
-      <li>{{todo}}</li>
-    {% endfor %}
-  </ul>
-
   many thanks to -> Copyright @ 2016, Harttle
+
+  <br />begin include tips:
+  <hr />
+  {% include 'partials/tips' %}
+  <hr />
+  end include tips:
 {% endblock %}
 
 
 {% block xyz %}
-  <p>My mission is to take over the place of <strong>nested</strong> 'xyz' in 'partials/proxy'.</p>
+  <p>My mission is to take over the place of <strong>nested</strong> 'xyz' in 'views/proxy'.</p>
 {% endblock %}
 
