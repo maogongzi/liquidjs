@@ -176,6 +176,7 @@ var _engine = {
   registerTag: function (name, tag) {
     return this.tag.register(name, tag)
   },
+
   lookup: function (filepath, root) {
     root = this.options.root.concat(root || [])
     root = _.uniq(root)
@@ -189,8 +190,38 @@ var _engine = {
       })
   },
 
+  // lookup a template synchronizely, returns null when nothing found
+  lookupSync(filepath, root) {
+    root = this.options.root.concat(root || [])
+    root = _.uniq(root)
+
+    if (!path.extname(filepath)) {
+      filepath += this.options.extname
+    }
+
+    let possiblePaths = root.map(root => path.resolve(root, filepath));
+    // first mark it as null, if later we find one available path,
+    // we'll use it then.
+    let resolvedPath = null;
+
+    // check all possible template paths
+    for (let i=0; i< possiblePaths.length; i++) {
+      try {
+        fs.accessSync(possiblePaths[i]);
+        resolvedPath = possiblePaths[i];
+
+        // we've found one available path, return and use it immediately
+        break;
+      } catch (e) {
+        // NO-OP (nothing to do here, continue to check the next path)
+      }
+    }
+
+    return resolvedPath;
+  },
+
   // read templates from file system synchronizely.
-  getTemplateSync: function (filepath, root) {    
+  getTemplateSync: function (filepath, root) {
     // we've found the template file, prepare to parse it.
     // cache enabled?
     if (this.options.cache && this.cache[filepath]) {
@@ -199,7 +230,7 @@ var _engine = {
 
     let tokens = this.parseTokensSync(filepath, root);
     let tpls = this.parser.parse(tokens);
-    
+
     // need to be cached?
     if (this.options.cache) {
       this.cache[filepath] = tpls;
@@ -220,26 +251,7 @@ var _engine = {
       filepath += this.options.extname
     }
 
-    root = this.options.root.concat(root || []);
-    root = _.uniq(root);
-
-    let possiblePaths = root.map(root => path.resolve(root, filepath));
-    // first mark it as null, if later we find one available path,
-    // we'll use it then.
-    let resolvedPath = null;
-
-    // check all possible template paths
-    for (let i=0; i< possiblePaths.length; i++) {
-      try {
-        fs.accessSync(possiblePaths[i]);
-        resolvedPath = possiblePaths[i];
-
-        // we've found one available path, return and use it immediately
-        break;
-      } catch (e) {
-        // NO-OP (nothing to do here, continue to check the next path)
-      }
-    }
+    let resolvedPath = this.lookupSync(filepath, root);
 
     // template not found, throw an error
     if (!resolvedPath) {
