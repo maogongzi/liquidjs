@@ -34,6 +34,18 @@ var _engine = {
 
     return this
   },
+
+  _resolvePartialName(filepath) {
+    // any partial file in liquid syntax should have a name
+    // begin with an "_"
+    // e.g. {% include 'partials/todos' %} -> "partials/_todos.liquid"
+    // @see https://github.com/Shopify/liquid/blob/master/lib/liquid/file_system.rb
+    // @see https://github.com/dotliquid/dotliquid/blob/master/src/DotLiquid/Tags/Include.cs
+    let patchPaths = filepath.split('/');
+    patchPaths[patchPaths.length - 1] = `_${patchPaths[patchPaths.length - 1]}`;
+    return patchPaths.join('/');
+  },
+
   parse: function (html, filepath) {
     let layoutName = null;
     let currentTokens = tokenizer.parse(html, filepath, this.options);
@@ -55,7 +67,7 @@ var _engine = {
     if (extendsTagIdx === 0) {
       let extendsTag = this.parser.parse([currentTokens[0]]);
 
-      layoutName = extendsTag[0].tagImpl.layoutName;
+      layoutName = this._resolvePartialName(extendsTag[0].tagImpl.layoutName);
       // remove extends tag from token list
       currentTokens.shift();
     }
@@ -78,7 +90,7 @@ var _engine = {
       if (extendsTagIdx === 0) {
         let extendsTag = this.parser.parse([superTokens[0]]);
 
-        layoutName = extendsTag[0].tagImpl.layoutName;
+        layoutName = this._resolvePartialName(extendsTag[0].tagImpl.layoutName);
         // remove 'extends' tag since we have already got the layout name.
         superTokens.shift();
         layoutTokens.push(superTokens);
