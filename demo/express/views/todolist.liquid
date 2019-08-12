@@ -1,11 +1,39 @@
-{% layout 'layout' %}
+{% extends 'views/proxy' %}
 
-<ul>
-  {% for todo in todolist %}
-    <li>{% include 'todo' id=forloop.index %}</li>
-  {% endfor %}
-</ul>
+{% block title %}todolist{% endblock %}
 
-{% block 'footer' %}
-  Copyright @ 2016, Harttle
+{% block abc %}
+  <div style="border: 1px solid;color: red;padding: 10px">
+    'abc' block in 'todolist'
+
+    <ul>
+      {% for todo in todos %}
+        <li>
+        {% include 'partials/todo' %}
+        </li>
+      {% endfor %}
+    </ul>
+
+    <div style="border: 1px solid;color: pink;padding: 10px;margin-left: 10px">
+      before 'abc' block in 'views/proxy'
+      {{ block.super }}
+      end 'abc' block in 'views/proxy'
+    </div>
+  </div>
 {% endblock %}
+
+{% block footer %}
+  many thanks to -> Copyright @ 2016, Harttle
+
+  <br />begin include tips:
+  <hr />
+  {% include 'partials/tips' %}
+  <hr />
+  end include tips:
+{% endblock %}
+
+
+{% block xyz %}
+  <p>My mission is to take over the place of <strong>nested</strong> 'xyz' in 'views/proxy'.</p>
+{% endblock %}
+

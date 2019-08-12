@@ -1,0 +1,25 @@
+{% extends 'views/layout' %}
+
+{% block title %}proxy title{% endblock %}
+
+{% block abc %}
+  <div style="border: 1px solid;color: green;padding: 10px">
+    <p>'abc' block in 'proxy'</p>
+
+    <div style="border: 1px solid;color: purple;padding: 10px">
+      <p>before 'abc' block in 'views/layout'</p>
+        {{ block.super }}
+      <p>end 'abc' block in 'views/layout'</p>
+    </div>
+
+    <p>before 'xyz' block in 'abc' block in 'proxy'</p>
+      {% block xyz %}
+        <p>this is xyz block, a nested block of block 'abc' of 'proxy', <strong style="color: red">it's a bug</strong> if you see this, which means the child 'xyz' block from 'views/todolist' failed to override this block.</p>
+      {% endblock %}
+    <p>end 'xyz' block in 'abc' block in 'proxy'</p>
+  </div>
+{% endblock %}
+
+{% block footer %}
+  this is a footer from 'proxy', <strong style="color: red">it's a bug</strong> if you see this, unless you deliberately remove the 'footer' block defined in 'views/todolist'
+{% endblock %}

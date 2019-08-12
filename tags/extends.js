@@ -5,28 +5,17 @@ const assert = require('../src/util/assert.js');
 
 module.exports = function(liquid) {
 
-    liquid.registerTag('layout', {
+    liquid.registerTag('extends', {
         parse: function(token, remainTokens){
             var match = lexical.value.exec(token.args);
             assert(match, `illegal token ${token.raw}`);
 
-            this.layout = match[0];
-            this.tpls = liquid.parser.parse(remainTokens);
+            this.layoutName = Liquid.evalValue(match[0], null);
         },
-        render: function(scope, hash) {
-            var layout = Liquid.evalValue(this.layout, scope);
-            var register = scope.get('liquid');
 
-            // render the remaining tokens immediately
-            return liquid.renderer.renderTemplates(this.tpls, scope)
-                // now register.blocks contains rendered blocks
-                .then(() => liquid.getTemplate(layout, register.root))
-                // push the hash
-                .then(templates => (scope.push(hash), templates))
-                // render the parent
-                .then(templates => liquid.renderer.renderTemplates(templates, scope))
-                // pop the hash
-                .then(partial => (scope.pop(), partial));
+        render: function(scope, hash) {
+            // should render nothing here
+            return Promise.resolve('')
         }
     });
 
@@ -44,6 +33,7 @@ module.exports = function(liquid) {
                 });
             stream.start();
         },
+
         render: function(scope){
             var register = scope.get('liquid');
             var html = register.blocks[this.block];

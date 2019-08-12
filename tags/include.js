@@ -26,6 +26,16 @@ module.exports = function(liquid) {
             if(this.with){
                 hash[filepath] = Liquid.evalValue(this.with, scope);
             }
+
+            // any partial file in liquid syntax should have a name 
+            // begin with an "_"
+            // e.g. {% include 'partials/todos' %} -> "partials/_todos.liquid"
+            // @see https://github.com/Shopify/liquid/blob/master/lib/liquid/file_system.rb
+            // @see https://github.com/dotliquid/dotliquid/blob/master/src/DotLiquid/Tags/Include.cs
+            let patchPaths = filepath.split('/');
+            patchPaths[patchPaths.length - 1] = `_${patchPaths[patchPaths.length - 1]}`;
+            filepath = patchPaths.join('/');
+
             return liquid.getTemplate(filepath, register.root)
                 .then((templates) => {
                     scope.push(hash);
